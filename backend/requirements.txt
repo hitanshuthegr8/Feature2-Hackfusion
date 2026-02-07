@@ -1,0 +1,29 @@
+# JournalSense Backend Requirements
+# Production-grade research intelligence pipeline
+
+# Flask and extensions
+flask>=2.3.0
+flask-cors>=4.0.0
+werkzeug>=2.3.0
+
+# PDF Processing
+PyMuPDF>=1.23.0
+
+# NLP and ML
+spacy>=3.7.0
+sentence-transformers>=2.2.0
+
+# Vector indexing
+faiss-cpu>=1.7.4
+numpy>=1.24.0
+chromadb>=0.4.0
+
+# API clients
+requests>=2.31.0
+
+# Data processing
+pandas>=2.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+

@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JournalSense - AI Research Intelligence with Ollama RAG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0a0a0f;
+            --bg-card: rgba(20, 20, 35, 0.8);
+            --border: rgba(255, 255, 255, 0.1);
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.5);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text: #ffffff;
+            --text-dim: #94a3b8;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6, #10b981);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tagline {
+            color: var(--text-dim);
+            margin-top: 0.5rem;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .status-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.75rem 1.25rem;
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: blink 2s infinite;
+        }
+
+        .status-dot.offline {
+            background: var(--danger);
+            animation: none;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .tab {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.6rem 1.2rem;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .tab:hover,
+        .tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .panel {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem;
+            color: var(--text);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        select option {
+            background: #1a1a2e;
+            color: white;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border: none;
+            border-radius: 8px;
+            padding: 0.7rem 1.4rem;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px var(--accent-glow);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn.success {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .btn.warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .result-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.25rem;
+            transition: all 0.3s;
+        }
+
+        .result-card:hover {
+            border-color: var(--accent);
+        }
+
+        .tag {
+            display: inline-block;
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 15px;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.75rem;
+            color: #a5b4fc;
+            margin: 0.2rem;
+        }
+
+        .tag.green {
+            background: rgba(16, 185, 129, 0.2);
+            color: #6ee7b7;
+        }
+
+        .json-viewer {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        pre {
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #e2e8f0;
+            white-space: pre-wrap;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .rag-output {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            padding: 1.5rem;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            line-height: 1.8;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .rag-output h3 {
+            color: var(--accent);
+            margin: 1rem 0 0.5rem;
+        }
+
+        .rag-output strong {
+            color: var(--success);
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .flex-row>* {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .evidence-box {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(16, 185, 129, 0.1));
+            border-left: 4px solid var(--accent);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .gap-card {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+        }
+
+        .paper-citation {
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            margin: 0.25rem 0;
+            font-size: 0.85rem;
+        }
+
+        .metric-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-animation"></div>
+
+    <div class="container">
+        <header>
+            <h1 class="logo">JournalSense</h1>
+            <p class="tagline">AI Research Intelligence + Ollama RAG + ChromaDB</p>
+        </header>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-dot" id="server-dot"></div>
+                <span id="server-text">Server</span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot" id="ollama-dot"></div>
+                <span id="ollama-text">Ollama</span>
+            </div>
+            <div class="status-item">
+                <span>Papers: <strong id="paper-count">0</strong></span>
+            </div>
+            <div class="status-item">
+                <span>Corpus: <strong id="chroma-count">0</strong></span>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="upload">1. Upload PDF</div>
+            <div class="tab" data-tab="corpus">2. Build Corpus</div>
+            <div class="tab" data-tab="analyze">3. RAG Analysis</div>
+            <div class="tab" data-tab="ask">4. Ask Question</div>
+            <div class="tab" data-tab="review">5. Peer Review</div>
+        </div>
+
+        <!-- Panel 1: Upload -->
+        <div class="panel active" id="upload-panel">
+            <div class="card">
+                <h2 class="card-title">Step 1: Upload Your Research Paper</h2>
+                <div class="upload-zone" id="upload-zone">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">📄</div>
+                    <div>Drop PDF here or <strong>click to browse</strong></div>
+                    <input type="file" id="file-input" accept=".pdf">
+                </div>
+                <div class="loading" id="upload-loading">
+                    <div class="spinner"></div>
+                    <p>Extracting entities with spaCy...</p>
+                </div>
+            </div>
+            <div id="upload-result"></div>
+        </div>
+
+        <!-- Panel 2: Build Corpus -->
+        <div class="panel" id="corpus-panel">
+            <div class="card">
+                <h2 class="card-title">Step 2: Build Comparison Corpus from OpenAlex</h2>
+                <p style="color: var(--text-dim); margin-bottom: 1rem;">
+                    Select your uploaded paper to auto-fill topic, or enter manually.
+                </p>
+
+                <label style="color: var(--text-dim); font-size: 0.9rem;">Select uploaded paper (optional):</label>
+                <select id="paper-select-corpus">
+                    <option value="">-- Select paper to auto-fill topic --</option>
+                </select>
+
+                <label style="color: var(--text-dim); font-size: 0.9rem;">Research topic for corpus:</label>
+                <input type="text" id="corpus-topic"
+                    placeholder="Enter research topic (e.g., vision transformer medical imaging)">
+
+                <div class="flex-row">
+                    <div>
+                        <label style="color: var(--text-dim); font-size: 0.9rem;">Number of papers:</label>
+                        <input type="text" id="corpus-limit" value="25" style="width: 100px;">
+                    </div>
+                </div>
+                <button class="btn success" id="build-corpus-btn">Fetch & Store in ChromaDB</button>
+                <button class="btn secondary" id="clear-corpus-btn">Clear Corpus</button>
+            </div>
+            <div class="loading" id="corpus-loading">
+                <div class="spinner"></div>
+                <p>Fetching from OpenAlex & storing in ChromaDB...</p>
+            </div>
+            <div id="corpus-result"></div>
+        </div>
+
+        <!-- Panel 3: RAG Analysis -->
+        <div class="panel" id="analyze-panel">
+            <div class="card">
+                <h2 class="card-title">Step 3: Deep RAG Analysis</h2>
+                <p style="color: var(--text-dim); margin-bottom: 1rem;">
+                    Uses Ollama with Chain-of-Thought prompting for explainable analysis.
+                </p>
+                <select id="paper-select-analyze">
+                    <option value="">Select your uploaded paper...</option>
+                </select>
+                <button class="btn" id="analyze-btn">🔬 Run Chain-of-Thought Analysis</button>
+                <button class="btn secondary" id="gaps-btn">🎯 Run Gap Analysis</button>
+                <button class="btn success" id="grounded-btn">📊 Mechanical Gaps (No LLM)</button>
+            </div>
+            <div class="loading" id="analyze-loading">
+                <div class="spinner"></div>
+                <p>Ollama is thinking... (this may take 30-60 seconds)</p>
+            </div>
+            <div id="analyze-result"></div>
+        </div>
+
+        <!-- Panel 4: Ask Question -->
+        <div class="panel" id="ask-panel">
+            <div class="card">
+                <h2 class="card-title">Step 4: Citation-Backed Q&A</h2>
+                <p style="color: var(--text-dim); margin-bottom: 1rem;">
+                    Ask any question. Every answer is backed by OpenAlex citations.
+                </p>
+                <select id="paper-select-ask">
+                    <option value="">Select paper...</option>
+                </select>
+                <textarea id="question-input" rows="3"
+                    placeholder="Ask a question... e.g., 'How does this paper compare to state-of-the-art?' or 'What are the main limitations?'"></textarea>
+                <button class="btn" id="ask-btn">Ask with Citations</button>
+            </div>
+            <div class="loading" id="ask-loading">
+                <div class="spinner"></div>
+                <p>Finding relevant sources and generating answer...</p>
+            </div>
+            <div id="ask-result"></div>
+        </div>
+
+        <!-- Panel 5: Peer Review -->
+        <div class="panel" id="review-panel">
+            <div class="card">
+                <h2 class="card-title">Step 5: Simulated Peer Review</h2>
+                <p style="color: var(--text-dim); margin-bottom: 1rem;">
+                    Get feedback from 3 simulated reviewers with different perspectives.
+                </p>
+                <select id="paper-select-review">
+                    <option value="">Select paper...</option>
+                </select>
+                <button class="btn warning" id="review-btn">Generate Peer Reviews</button>
+            </div>
+            <div class="loading" id="review-loading">
+                <div class="spinner"></div>
+                <p>Simulating 3 peer reviewers...</p>
+            </div>
+            <div id="review-result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API = 'http://localhost:5000';
+        let currentPaperId = null;
+        let papersData = [];
+
+        // Test server connection on load
+        console.log('Testing server connection to:', API);
+        fetch(`${API}/health`)
+            .then(res => {
+                if (res.ok) {
+                    console.log('✅ Server is running');
+                } else {
+                    console.warn('⚠️ Server responded with status:', res.status);
+                }
+            })
+            .catch(err => {
+                console.error('❌ Cannot connect to server:', err);
+                console.error('Make sure to run: python run_server.py');
+            });
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.tab}-panel`).classList.add('active');
+            });
+        });
+
+        // Health check
+        async function checkHealth() {
+            try {
+                const res = await fetch(`${API}/health`);
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                const data = await res.json();
+
+                const serverDot = document.getElementById('server-dot');
+                const serverText = document.getElementById('server-text');
+                const paperCount = document.getElementById('paper-count');
+                const chromaCount = document.getElementById('chroma-count');
+                const ollamaDot = document.getElementById('ollama-dot');
+                const ollamaText = document.getElementById('ollama-text');
+
+                if (serverDot && serverText && paperCount && chromaCount && ollamaDot && ollamaText) {
+                    serverDot.classList.remove('offline');
+                    serverText.textContent = 'Online';
+                    paperCount.textContent = data.indexed_papers || 0;
+                    chromaCount.textContent = data.chroma_papers || 0;
+
+                    if (data.ollama_status === 'online') {
+                        ollamaDot.classList.remove('offline');
+                        ollamaText.textContent = 'Ollama Ready';
+                    } else {
+                        ollamaDot.classList.add('offline');
+                        ollamaText.textContent = 'Ollama Offline';
+                    }
+                }
+
+                loadPaperSelects();
+            } catch (e) {
+                const serverDot = document.getElementById('server-dot');
+                const serverText = document.getElementById('server-text');
+                if (serverDot && serverText) {
+                    serverDot.classList.add('offline');
+                    serverText.textContent = 'Offline';
+                }
+            }
+        }
+
+        checkHealth();
+        setInterval(checkHealth, 10000);
+
+        // Load paper selects
+        async function loadPaperSelects() {
+            try {
+                const res = await fetch(`${API}/papers`);
+                if (!res.ok) {
+                    return; // Silently fail if server error
+                }
+                const data = await res.json();
+                papersData = data.papers || [];
+
+                const selects = ['paper-select-analyze', 'paper-select-ask', 'paper-select-review', 'paper-select-corpus'];
+                selects.forEach(id => {
+                    const select = document.getElementById(id);
+                    if (!select) return;
+                    const currentVal = select.value;
+
+                    if (id === 'paper-select-corpus') {
+                        select.innerHTML = '<option value="">-- Select paper to auto-fill topic --</option>';
+                    } else {
+                        select.innerHTML = '<option value="">Select paper...</option>';
+                    }
+
+                    papersData.forEach(p => {
+                        const title = p.title || p.paper_id;
+                        select.innerHTML += `<option value="${p.paper_id}">${title.substring(0, 60)}${title.length > 60 ? '...' : ''}</option>`;
+                    });
+                    if (currentVal) select.value = currentVal;
+                });
+            } catch (e) { }
+        }
+
+        // Auto-fill corpus topic from selected paper
+        const paperSelectCorpus = document.getElementById('paper-select-corpus');
+        if (paperSelectCorpus) {
+            paperSelectCorpus.addEventListener('change', async (e) => {
+            const paperId = e.target.value;
+            if (!paperId) return;
+
+            try {
+                const res = await fetch(`${API}/papers/${paperId}`);
+                if (!res.ok) {
+                    return; // Silently fail if paper not found
+                }
+                const data = await res.json();
+
+                if (data.paper) {
+                    const p = data.paper;
+                    const topics = [
+                        ...(p.architecture || []),
+                        ...(p.datasets || []),
+                        ...(p.tasks || [])
+                    ].slice(0, 5).join(' ');
+
+                    let title = p.title || '';
+                    if (title.startsWith('Title: ')) title = title.substring(7);
+
+                    const corpusTopic = document.getElementById('corpus-topic');
+                    if (corpusTopic) {
+                        corpusTopic.value = topics || title || '';
+                    }
+                }
+            } catch (e) { }
+            });
+        }
+
+        // File upload
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+
+        if (uploadZone && fileInput) {
+            uploadZone.addEventListener('click', () => fileInput.click());
+            uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.style.borderColor = 'var(--accent)'; });
+            uploadZone.addEventListener('dragleave', () => { uploadZone.style.borderColor = 'var(--border)'; });
+            uploadZone.addEventListener('drop', e => {
+                e.preventDefault();
+                uploadZone.style.borderColor = 'var(--border)';
+                if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]);
+            });
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length) uploadFile(fileInput.files[0]);
+            });
+        }
+
+        async function uploadFile(file) {
+            const uploadLoading = document.getElementById('upload-loading');
+            const uploadResult = document.getElementById('upload-result');
+            
+            if (!uploadLoading || !uploadResult) {
+                alert('Error: UI elements not found');
+                return;
+            }
+
+            // Validate file
+            if (!file) {
+                alert('Error: No file selected');
+                return;
+            }
+
+            if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                alert('Error: Please select a PDF file');
+                return;
+            }
+
+            // Check file size (50MB limit)
+            const maxSize = 50 * 1024 * 1024; // 50MB
+            if (file.size > maxSize) {
+                alert(`Error: File too large. Maximum size is 50MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+                return;
+            }
+
+            uploadLoading.classList.add('active');
+            uploadResult.innerHTML = '';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                console.log('Uploading file:', file.name, 'Size:', file.size);
+                
+                // First check if server is reachable
+                const healthCheck = await fetch(`${API}/health`).catch(() => null);
+                if (!healthCheck || !healthCheck.ok) {
+                    throw new Error('Cannot connect to server. Make sure the backend is running on http://localhost:5000');
+                }
+
+                const res = await fetch(`${API}/upload-pdf`, { 
+                    method: 'POST', 
+                    body: formData,
+                    // Don't set Content-Type header - browser will set it with boundary for FormData
+                });
+
+                console.log('Response status:', res.status);
+
+                if (!res.ok) {
+                    let errorMessage = `HTTP ${res.status}`;
+                    try {
+                        const errorData = await res.json();
+                        errorMessage = errorData.error || errorMessage;
+                    } catch (e) {
+                        const text = await res.text();
+                        errorMessage = text || errorMessage;
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const data = await res.json();
+                console.log('Upload successful:', data);
+
+                if (data.error) throw new Error(data.error);
+
+                uploadLoading.classList.remove('active');
+                currentPaperId = data.paper_id;
+
+                uploadResult.innerHTML = `
+                    <div class="card">
+                        <h3 class="card-title">✅ Paper Processed Successfully</h3>
+                        <div style="margin-bottom: 1rem;">
+                            <span class="tag green">ID: ${data.paper_id}</span>
+                            <span class="tag">Vectors: ${data.vectors_created || 0}</span>
+                        </div>
+                        <div class="json-viewer">
+                            <pre>${JSON.stringify(data.canonical_json || {}, null, 2)}</pre>
+                        </div>
+                    </div>
+                `;
+
+                checkHealth();
+            } catch (e) {
+                console.error('Upload error:', e);
+                uploadLoading.classList.remove('active');
+                
+                let errorMsg = e.message;
+                if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
+                    errorMsg = 'Cannot connect to server. Please:\n1. Make sure the backend server is running (python run_server.py)\n2. Check that it\'s running on http://localhost:5000\n3. Check browser console for more details';
+                }
+                
+                uploadResult.innerHTML = `
+                    <div class="card" style="border-color: var(--danger);">
+                        <h3 class="card-title" style="color: var(--danger);">❌ Upload Failed</h3>
+                        <p style="color: var(--text-dim);">${errorMsg}</p>
+                    </div>
+                `;
+                alert('Upload error: ' + errorMsg);
+            }
+        }
+
+        // Build corpus
+        const buildCorpusBtn = document.getElementById('build-corpus-btn');
+        if (buildCorpusBtn) {
+            buildCorpusBtn.addEventListener('click', async () => {
+            const topic = document.getElementById('corpus-topic').value.trim();
+            const limit = parseInt(document.getElementById('corpus-limit').value) || 25;
+            if (!topic) return alert('Enter a topic or select a paper');
+
+            document.getElementById('corpus-loading').classList.add('active');
+            document.getElementById('corpus-result').innerHTML = '';
+
+            try {
+                const res = await fetch(`${API}/build-corpus`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic, limit })
+                });
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+                    throw new Error(errorData.error || `HTTP ${res.status}`);
+                }
+                const data = await res.json();
+
+                if (data.error) throw new Error(data.error);
+
+                document.getElementById('corpus-loading').classList.remove('active');
+
+                if (data.papers_fetched === 0) {
+                    alert('⚠️ No papers found for this topic. Try a broader topic (e.g. "medical image segmentation" instead of the full paper title).');
+                }
+
+                document.getElementById('corpus-result').innerHTML = `
+                    <div class="card">
+                        <h3 class="card-title">🎉 Corpus Built Successfully!</h3>
+                        <div class="flex-row">
+                            <div class="result-card">
+                                <div style="font-size: 2rem; font-weight: 700; color: var(--accent);">${data.papers_fetched}</div>
+                                <div style="color: var(--text-dim);">Papers Fetched</div>
+                            </div>
+                            <div class="result-card">
+                                <div style="font-size: 2rem; font-weight: 700; color: var(--success);">${data.papers_added}</div>
+                                <div style="color: var(--text-dim);">New Papers Added</div>
+                            </div>
+                            <div class="result-card">
+                                <div style="font-size: 2rem; font-weight: 700; color: var(--warning);">${data.total_in_corpus}</div>
+                                <div style="color: var(--text-dim);">Total in Corpus</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                checkHealth();
+            } catch (e) {
+                document.getElementById('corpus-loading').classList.remove('active');
+                alert('Error: ' + e.message);
+            }
+            });
+        }
+
+        const clearCorpusBtn = document.getElementById('clear-corpus-btn');
+        if (clearCorpusBtn) {
+            clearCorpusBtn.addEventListener('click', async () => {
+            if (!confirm('Clear entire corpus?')) return;
+            await fetch(`${API}/chroma/clear`, { method: 'POST' });
+            document.getElementById('corpus-result').innerHTML = '';
+            checkHealth();
+            alert('Corpus cleared');
+            });
+        }
+
+        // RAG Analysis - Chain of Thought
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const gapsBtn = document.getElementById('gaps-btn');
+        const groundedBtn = document.getElementById('grounded-btn');
+        if (analyzeBtn) analyzeBtn.addEventListener('click', () => runRAGAnalysis('rag/analyze'));
+        if (gapsBtn) gapsBtn.addEventListener('click', () => runRAGAnalysis('rag/gaps'));
+        if (groundedBtn) groundedBtn.addEventListener('click', () => runGroundedGaps());
+
+        async function runRAGAnalysis(endpoint) {
+            const paperId = document.getElementById('paper-select-analyze').value;
+            if (!paperId) return alert('Select a paper');
+
+            document.getElementById('analyze-loading').classList.add('active');
+            document.getElementById('analyze-result').innerHTML = '';
+
+            try {
+                const res = await fetch(`${API}/${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paper_id: paperId })
+                });
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+                    throw new Error(errorData.error || `HTTP ${res.status}`);
+                }
+                const data = await res.json();
+
+                document.getElementById('analyze-loading').classList.remove('active');
+
+                // Build rich explainable output
+                let html = `<div class="card">
+                    <h3 class="card-title">🔬 ${data.analysis_type || 'RAG Analysis'}</h3>`;
+
+                // Show corpus stats
+                if (data.corpus_statistics || data.corpus_size) {
+                    const stats = data.corpus_statistics || {};
+                    html += `<div class="evidence-box">
+                        <strong>📊 Corpus Grounding:</strong><br>
+                        Total Papers: <span class="metric-badge">${stats.total_papers || data.corpus_size || 'N/A'}</span>
+                        ${stats.related_papers ? ` | Related: <span class="metric-badge">${stats.related_papers}</span>` : ''}
+                        ${data.novelty_score !== undefined ? ` | Novelty Score: <span class="metric-badge">${(data.novelty_score * 100).toFixed(0)}%</span>` : ''}
+                    </div>`;
+                }
+
+                // Show mechanically grounded gaps
+                if (data.mechanically_grounded_gaps && data.mechanically_grounded_gaps.length) {
+                    html += `<h4 style="margin: 1rem 0 0.5rem; color: var(--warning);">🎯 Grounded Research Gaps</h4>`;
+                    data.mechanically_grounded_gaps.forEach((gap, i) => {
+                        html += `<div class="gap-card">
+                            <strong>Gap ${i + 1}: ${gap.description || gap.gap_type}</strong>
+                            <div style="margin-top: 0.5rem; color: var(--text-dim);">${gap.grounded_statement || ''}</div>
+                            ${gap.recommendation ? `<div style="margin-top: 0.5rem; color: var(--success);">💡 ${gap.recommendation}</div>` : ''}
+                        </div>`;
+                    });
+                }
+
+                // Show cited papers with OpenAlex IDs
+                if (data.cited_papers && data.cited_papers.length) {
+                    html += `<h4 style="margin: 1rem 0 0.5rem; color: var(--accent);">📚 Cited Papers (with OpenAlex IDs)</h4>`;
+                    data.cited_papers.slice(0, 5).forEach(p => {
+                        html += `<div class="paper-citation">
+                            <strong>${p.title ? p.title.substring(0, 60) : 'Unknown'}...</strong>
+                            <span class="tag green">OpenAlex: ${p.openalex_id || 'N/A'}</span>
+                            <span class="tag">Similarity: ${((p.similarity || 0) * 100).toFixed(0)}%</span>
+                            <span class="tag">${p.citations || 0} citations</span>
+                        </div>`;
+                    });
+                }
+
+                // Show LLM reasoning
+                if (data.reasoning || data.llm_analysis) {
+                    html += `<h4 style="margin: 1rem 0 0.5rem;">🧠 LLM Analysis</h4>
+                        <div class="rag-output">${(data.reasoning || data.llm_analysis || '').replace(/\n/g, '<br>')}</div>`;
+                }
+
+                html += `</div>`;
+                document.getElementById('analyze-result').innerHTML = html;
+
+            } catch (e) {
+                document.getElementById('analyze-loading').classList.remove('active');
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function runGroundedGaps() {
+            const paperId = document.getElementById('paper-select-analyze').value;
+            if (!paperId) return alert('Select a paper');
+
+            document.getElementById('analyze-loading').classList.add('active');
+            document.getElementById('analyze-result').innerHTML = '';
+
+            try {
+                const res = await fetch(`${API}/grounded-gaps`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paper_id: paperId })
+                });
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+                    throw new Error(errorData.error || `HTTP ${res.status}`);
+                }
+                const data = await res.json();
+
+                document.getElementById('analyze-loading').classList.remove('active');
+
+                let html = `<div class="card">
+                    <h3 class="card-title">📊 Mechanical Gap Analysis (No LLM)</h3>
+                    <p style="color: var(--text-dim); margin-bottom: 1rem;">Pure statistical analysis - every claim is verifiable</p>`;
+
+                // Corpus stats
+                const stats = data.corpus_statistics || {};
+                html += `<div class="evidence-box">
+                    <strong>Corpus Statistics:</strong><br>
+                    • Total Papers: <span class="metric-badge">${stats.total_papers || 0}</span><br>
+                    • Avg Citations: <span class="metric-badge">${stats.avg_citations || 0}</span>
+                </div>`;
+
+                // Novelty
+                if (data.novelty) {
+                    html += `<div class="evidence-box">
+                        <strong>Novelty Assessment:</strong><br>
+                        • Score: <span class="metric-badge">${(data.novelty.score * 100).toFixed(0)}%</span><br>
+                        • Formula: <code>${data.novelty.formula}</code><br>
+                        • Unique Concepts: ${data.novelty.unique_concepts} / ${data.novelty.total_user_concepts}<br>
+                        • Interpretation: ${data.novelty.interpretation}
+                    </div>`;
+                }
+
+                // Grounded gaps
+                if (data.grounded_gaps) {
+                    html += `<h4 style="margin: 1rem 0 0.5rem; color: var(--warning);">🎯 Grounded Gaps</h4>`;
+                    data.grounded_gaps.forEach((gap, i) => {
+                        html += `<div class="gap-card">
+                            <strong>${gap.gap_type}: ${gap.description}</strong>
+                            <div style="margin-top: 0.5rem;">${gap.grounded_statement}</div>
+                            ${gap.evidence ? `<div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-dim);">
+                                Evidence: ${gap.evidence.papers_using_concept || gap.evidence.citations || ''}
+                                ${gap.evidence.openalex_id ? ` | OpenAlex: ${gap.evidence.openalex_id}` : ''}
+                            </div>` : ''}
+                        </div>`;
+                    });
+                }
+
+                // Similar papers
+                if (data.similar_papers) {
+                    html += `<h4 style="margin: 1rem 0 0.5rem;">📚 Most Similar Papers</h4>`;
+                    data.similar_papers.slice(0, 5).forEach(p => {
+                        html += `<div class="paper-citation">
+                            ${p.title ? p.title.substring(0, 50) : 'Unknown'}...
+                            <span class="tag green">OpenAlex: ${p.openalex_id}</span>
+                            <span class="tag">${p.citations} cites</span>
+                        </div>`;
+                    });
+                }
+
+                html += `</div>`;
+                document.getElementById('analyze-result').innerHTML = html;
+
+            } catch (e) {
+                document.getElementById('analyze-loading').classList.remove('active');
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // Ask Question
+        const askBtn = document.getElementById('ask-btn');
+        if (askBtn) {
+            askBtn.addEventListener('click', async () => {
+            const paperId = document.getElementById('paper-select-ask').value;
+            const question = document.getElementById('question-input').value.trim();
+            if (!paperId) return alert('Select a paper');
+            if (!question) return alert('Enter a question');
+
+            document.getElementById('ask-loading').classList.add('active');
+            document.getElementById('ask-result').innerHTML = '';
+
+            try {
+                const res = await fetch(`${API}/rag/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paper_id: paperId, question })
+                });
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+                    throw new Error(errorData.error || `HTTP ${res.status}`);
+                }
+                const data = await res.json();
+
+                document.getElementById('ask-loading').classList.remove('active');
+
+                let sourcesHtml = '';
+                if (data.sources && data.sources.length) {
+                    sourcesHtml = `<div style="margin-bottom: 1rem;">
+                        <strong>📚 Sources Used:</strong><br>
+                        ${data.sources.map(s => `<div class="paper-citation">
+                            [${s.source_id}] ${s.title ? s.title.substring(0, 50) : 'Unknown'}...
+                            <span class="tag green">OpenAlex: ${s.openalex_id}</span>
+                            <span class="tag">${s.citations} cites</span>
+                        </div>`).join('')}
+                    </div>`;
+                }
+
+                document.getElementById('ask-result').innerHTML = `
+                    <div class="card">
+                        <h3 class="card-title">💬 Citation-Backed Answer</h3>
+                        <div class="evidence-box">
+                            <strong>Question:</strong> ${question}<br>
+                            <strong>Corpus Size:</strong> ${data.corpus_size || 'N/A'} papers
+                        </div>
+                        ${sourcesHtml}
+                        <div class="rag-output">${(data.answer || '').replace(/\n/g, '<br>')}</div>
+                    </div>
+                `;
+            } catch (e) {
+                document.getElementById('ask-loading').classList.remove('active');
+                alert('Error: ' + e.message);
+            }
+            });
+        }
+
+        // Peer Review
+        const reviewBtn = document.getElementById('review-btn');
+        if (reviewBtn) {
+            reviewBtn.addEventListener('click', async () => {
+            const paperId = document.getElementById('paper-select-review').value;
+            if (!paperId) return alert('Select a paper');
+
+            document.getElementById('review-loading').classList.add('active');
+            document.getElementById('review-result').innerHTML = '';
+
+            try {
+                const res = await fetch(`${API}/rag/review`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paper_id: paperId })
+                });
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+                    throw new Error(errorData.error || `HTTP ${res.status}`);
+                }
+                const data = await res.json();
+
+                document.getElementById('review-loading').classList.remove('active');
+
+                // Build context papers safely
+                let contextHtml = '';
+                if (data.context_papers && Array.isArray(data.context_papers)) {
+                    contextHtml = data.context_papers.map(p => {
+                        if (typeof p === 'object') {
+                            return `<span class="tag green">${p.title ? p.title.substring(0, 30) : 'Unknown'}... (${p.openalex_id || 'N/A'})</span>`;
+                        } else if (typeof p === 'string') {
+                            return `<span class="tag">${p.substring(0, 30)}...</span>`;
+                        }
+                        return '';
+                    }).join('');
+                }
+
+                document.getElementById('review-result').innerHTML = `
+                    <div class="card">
+                        <h3 class="card-title">📝 Simulated Peer Reviews</h3>
+                        <div class="evidence-box">
+                            <strong>Corpus Size:</strong> ${data.corpus_size || 'N/A'} papers<br>
+                            <strong>Novelty Score:</strong> ${data.novelty_score ? (data.novelty_score * 100).toFixed(0) + '%' : 'N/A'}
+                        </div>
+                        ${contextHtml ? `<div style="margin-bottom: 1rem;"><strong>Context Papers:</strong><br>${contextHtml}</div>` : ''}
+                        <div class="rag-output">${(data.simulated_reviews || '').replace(/\n/g, '<br>')}</div>
+                    </div>
+                `;
+            } catch (e) {
+                document.getElementById('review-loading').classList.remove('active');
+                alert('Error: ' + e.message);
+            }
+            });
+        }
+    </script>
+</body>
+
+</html>

@@ -1,213 +1,178 @@
-<div align="center">
-  
-  <!-- Header Animation Placeholder -->
-  
-  <h1>✨ JournalSense ✨</h1>
-  <h3><em>Where every great idea finds its perfect stage.</em></h3>
+# 🔬 JournalSense - AI Research Assistant Platform
 
-</div>
+> **Production-grade research intelligence pipeline with cursor-level explainability**
 
-<!-- Terminal Style Introduction -->
-<div align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=2000&pause=800&color=32CD32&center=true&width=600&lines=Initializing+JournalSense...;Loading+Recommendation+Engine...;Calculating+Journal+Impact+Factors...;Scanning+Academic+Databases...;Ready+to+revolutionize+your+research+journey!" alt="Terminal Animation">
-</div>
+## 🎯 System Architecture
 
-<!-- Animated Divider -->
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" alt="Divider">
+```
+PDF / Topic
+     ↓
+Document Intelligence Layer (spaCy)
+     ↓
+Canonical Research JSON
+     ↓
+OpenAlex Expansion & Validation
+     ↓
+Vector Index (FAISS)
+     ↓
+Comparative Reasoning Engine
+     ↓
+Cursor-Explainable Outputs
+```
 
-## 🎯 Problem & Inspiration
+## 🔑 Key Principle
 
-<table>
-<tr>
-<td>
+> **Everything becomes JSON before anything becomes embeddings.**
 
-Researchers often struggle to find the right journal to submit their work to — whether due to mismatched scope, low acceptance chances, or simply being unaware of niche publications.
+## 🚀 Quick Start
 
-**JournalSense** is your AI-powered recommendation system that, given the title and abstract of a research paper, suggests the top 3 most relevant academic journals where your paper is most likely to be a good fit.
+### 1. Backend Setup
 
-Think of it as **"Spotify for researchers"** — matching your content with the best-suited outlets based on topics, tone, technical depth, and scope.
+```bash
+# Navigate to project root
+cd ResearchAss
 
-</td>
-<td width="40%">
-<img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZDMzNTBlMWJjODFlOWUxZjA4NWI4ODFhMGQ2ZDZlNjNmNjEwNTI5MiZjdD1n/scZPhLqaVOM1qG4lT9/giphy.gif" width="100%" alt="Research Challenge">
-</td>
-</tr>
-</table>
+# Create virtual environment
+python -m venv venv
 
-<!-- Animated Divider -->
-<div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=100&section=divider" width="100%">
-</div>
+# Activate (Windows)
+.\venv\Scripts\activate
 
-## 🔍 What It Does
+# Install dependencies
+pip install -r backend/requirements.txt
 
-JournalSense leverages cutting-edge AI to analyze your research and connect it with the perfect publication venue.
+# Download spaCy model
+python -m spacy download en_core_web_sm
 
-<div align="center">
-  <table>
-    <tr>
-      <td align="center">
-        <h3>🔎</h3>
-        <h3>Journal Finder Engine</h3>
-        <p>Matches your paper with journals using semantic similarity, citation patterns, and scope analysis</p>
-      </td>
-      <td align="center">
-        <h3>📈</h3>
-        <h3>Trending Analysis</h3>
-        <p>Identifies hot topics in your field to boost your paper's visibility and impact</p>
-      </td>
-    </tr>
-    <tr>
-      <td align="center">
-        <h3>🔑</h3>
-        <h3>Smart Keyword Extractor</h3>
-        <p>Detects optimal keywords from your abstract to maximize discoverability</p>
-      </td>
-      <td align="center">
-        <h3>✨</h3>
-        <h3>Mesmerize Abstract Bot</h3>
-        <p>Polishes your abstract to highlight strengths while maintaining scientific integrity</p>
-      </td>
-    </tr>
-  </table>
-</div>
+# Run server
+python run_server.py
+```
 
-<!-- Animated Divider -->
-<img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif" width="100%">
+### 2. Frontend Setup
 
-## 🔧 How We Built It
+```bash
+cd project
+npm install
+npm run dev
+```
 
-<table>
-<tr>
-<td>
+## 📡 API Endpoints
 
-JournalSense combines powerful AI technologies to create a seamless recommendation experience:
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check with index stats |
+| `/upload-pdf` | POST | Upload and process PDF → Canonical JSON |
+| `/search-topic` | POST | Search OpenAlex by topic |
+| `/papers` | GET | Get all indexed papers |
+| `/papers/<id>` | GET | Get specific paper |
+| `/compare` | GET | Comparative gap analysis |
+| `/explain/<id>/<entity>` | GET | Cursor-level trace |
+| `/search` | POST | Semantic search (FAISS) |
+| `/clear` | POST | Clear index |
 
-- 🔍 **FAISS (Facebook AI Similarity Search)** & **Cosine Similarity** - Lightning-fast vector similarity search
-- 📊 **SpaCy** - Sophisticated NLP processing and entity extraction
-- 📋 **TF-IDF** - Topic modeling and content relevance scoring
-- 🌐 **Streamlit** - Beautiful, responsive web interface
+## 📊 Canonical Research JSON Schema
 
-Our system processes abstracts through multiple layers of analysis to match semantic meaning, methodological approach, and scope requirements.
+```json
+{
+  "paper_id": "local_001",
+  "title": "...",
+  "architecture": ["ViT", "UNet"],
+  "modules": ["self-attention", "decoder"],
+  "datasets": ["BraTS"],
+  "metrics": {"Dice": 0.91},
+  "baselines": ["UNet"],
+  "tasks": ["segmentation"],
+  "limitations": ["single dataset evaluation"],
+  "intent_phrases": ["we propose", "to improve accuracy"],
+  "raw_text_refs": {"method": "...", "results": "..."},
+  "entity_traces": [...],
+  "openalex": {
+    "work_id": "...",
+    "cited_by_count": 412,
+    "publication_year": 2023,
+    "concepts": ["Vision Transformer"],
+    "trend_velocity": 137.3,
+    "is_sota": true
+  }
+}
+```
 
-</td>
-<td width="40%">
-<img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMTY5ZDdjM2FkZGUyZDVlZThkNzBiYWI3OTcwMGM5YjIyYmY2MWY1MyZjdD1n/l378z4mKhut3GQrJu/giphy.gif" width="100%" alt="AI Tech">
-</td>
-</tr>
-</table>
+## 🏗️ Pipeline Phases
 
-<!-- Animated Divider -->
-<div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:EEFF00,100:a82da8&height=100&section=divider&text=Features&fontSize=30&fontColor=white&animation=twinkling">
-</div>
+### Phase 1: Document Intelligence
+- PDF → Text with section segmentation
+- spaCy entity extraction (MODEL, DATASET, METRIC, TASK, BASELINE, LIMITATION)
+- Keyword canonicalization (ViT → vision_transformer)
 
-## 🔥 Features
+### Phase 2: OpenAlex Enrichment
+- Concept expansion queries
+- Citation metrics & trend velocity
+- SoTA detection
+- Benchmark coverage analysis
 
-<div align="center">
-  
-| Feature | Description |
-|---------|-------------|
-| <img src="https://img.shields.io/badge/AI-Powered_Matching-blueviolet?style=flat-square"> | Our algorithm analyzes your paper's content against 10,000+ academic journals |
-| <img src="https://img.shields.io/badge/Auto-Keywords-green?style=flat-square"> | Automatically extract the most relevant keywords from your abstract |
-| <img src="https://img.shields.io/badge/Abstract-Polish-orange?style=flat-square"> | Get suggestions to enhance your abstract while maintaining scientific integrity |
-| <img src="https://img.shields.io/badge/Trend-Analysis-red?style=flat-square"> | See what topics are trending in your target journals |
+### Phase 3: FAISS Vectorization
+- Embeds **structured summaries**, not raw text
+- Section-aware indexing
+- Cosine similarity search
 
-</div>
+### Phase 4: Comparative Analysis
+- Architecture/dataset/baseline distributions
+- Common patterns & evaluation gaps
+- Novel opportunity suggestions
 
-<!-- Animated Divider -->
-<img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif" width="100%">
+### Phase 5: Cursor Explainability
+- Every insight → paper → section → character offset
+- Click-to-navigate trace system
 
-## ⚔️ Challenges Faced
+## 🎤 Judge Demo Script
 
-- **Data Access**: Obtaining comprehensive, up-to-date journal metadata and publication histories
-- **Semantic Understanding**: Building accurate topic models across diverse scientific fields
-- **Embedding Quality**: Developing embeddings that capture nuanced differences between similar research domains
-- **Performance Optimization**: Scaling our similarity search for real-time recommendations
+> "We convert every paper into a canonical JSON before any reasoning.
+> OpenAlex enriches it, FAISS retrieves it, and our comparison engine
+> finds gaps with full cursor-level traceability."
 
-<!-- Animated Divider -->
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" alt="Divider">
+## 📁 Project Structure
 
-## 🎉 Accomplishments
+```
+ResearchAss/
+├── backend/
+│   ├── __init__.py
+│   ├── app.py              # Flask server
+│   ├── config.py           # Settings & canonicalization maps
+│   ├── pdf_extractor.py    # PDF → Sections
+│   ├── entity_extractor.py # spaCy → Canonical JSON
+│   ├── openalex_client.py  # OpenAlex integration
+│   ├── faiss_index.py      # Vector indexing
+│   ├── comparative_engine.py # Gap analysis
+│   ├── explainability.py   # Cursor traces
+│   └── requirements.txt
+├── project/                 # React frontend
+├── Models/                  # Streamlit apps (legacy)
+├── run_server.py           # Server entry point
+└── README.md
+```
 
-<table>
-<tr>
-<td>
+## ⚡ Tech Stack
 
-- 🚀 Reduced search time from hours to **seconds**
-- 📊 Database of **10,000+** academic journals across disciplines
-- 🧠 Custom embedding model trained on **large scale** academic abstracts
-- 🌐 Successfully integrated with academic databases (OpenAlex, Semantic Scholar)
-- 🔄 Real-time journal trend analysis for maximum relevance
+| Component | Technology |
+|-----------|------------|
+| Backend | Flask + Python 3.10+ |
+| PDF Extraction | PyMuPDF (fitz) |
+| NLP | spaCy (en_core_web_sm) |
+| Embeddings | sentence-transformers (MiniLM) |
+| Vector Index | FAISS |
+| Research API | OpenAlex |
+| Frontend | React + TypeScript + Vite |
 
-</td>
-<td width="40%">
-<img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYTk3MjUyYmI2ZjMwMTVhMTUwN2M0OWZkYWM1ZmQxZGM0ZThhNGYxMCZjdD1n/LOnt6uqjD9OexmQJRB/giphy.gif" width="100%" alt="Accomplishment">
-</td>
-</tr>
-</table>
+## 🏆 Hackathon Features
 
-<!-- Animated Divider -->
-<div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=100&section=divider">
-</div>
+- ✅ Canonical JSON extraction
+- ✅ OpenAlex enrichment  
+- ✅ Comparative gap JSON
+- ✅ Cursor-level trace
+- 🔄 Novelty scoring (planned)
+- 🔄 Reviewer simulation (planned)
+- 🔄 Diagram generation (planned)
 
-## 📚 What We Learned
+---
 
-- Advanced vector similarity techniques for academic content
-- Optimizing multi-factor recommendation systems
-- Balancing ML model complexity with real-world usefulness
-- The importance of domain expertise in natural language processing
-- User experience design for researchers and academics
-
-
-<!-- Animated Divider -->
-<img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif" width="100%">
-
-## 📸 Demo Screenshots
-
-<div align="center">
-  <table>
-    <tr>
-      <td><img src="https://via.placeholder.com/400x225.png?text=Journal+Recommendation+Dashboard" alt="Dashboard"></td>
-      <td><img src="https://via.placeholder.com/400x225.png?text=Abstract+Analysis+View" alt="Abstract Analysis"></td>
-    </tr>
-    <tr>
-      <td><img src="https://via.placeholder.com/400x225.png?text=Journal+Comparison+Tool" alt="Journal Comparison"></td>
-      <td><img src="https://via.placeholder.com/400x225.png?text=Keyword+Optimization" alt="Keyword Tool"></td>
-    </tr>
-  </table>
-</div>
-
-## 📊 Project Information Deck
-
-<div align="center">
-  <a href="https://drive.google.com/file/d/1rudH1-UmFbe6DF0D5w5_6G7qrn_397dz/view?usp=sharing" target="_blank">
-    <img src="https://img.shields.io/badge/📄-Project_Info_Deck-blue?style=for-the-badge&logo=google-drive&logoColor=white" alt="Project Information Deck">
-  </a>
-</div>
-
-## 📺 Demo Video
-
-<div align="center">
-  <a href="https://www.youtube.com/watch?v=uFNCtUuNHvA" target="_blank">
-    <img src="https://img.shields.io/badge/▶️-Watch_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch Demo">
-  </a>
-</div>
-
-<!-- Animated Divider -->
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" alt="Divider">
-
-## 🔗 Useful Links
-
-<div align="center">
-  <a href="https://journalsense.vercel.app/">
-    <img src="https://img.shields.io/badge/Live_Demo-00B0FF?style=for-the-badge&logo=streamlit&logoColor=white" alt="Live Demo">
-  </a>
-</div>
-
-> "Finding the right journal shouldn't be harder than the research itself."
-
-<div align="center">
-  <sub>Built with ❤️ by the Team HackStreet</sub>
-</div>
+Built for **JournalSense** 🚀
