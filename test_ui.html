@@ -541,19 +541,49 @@
         let currentPaperId = null;
         let papersData = [];
 
+        // Check if HTML is opened as file:// (CORS will fail)
+        if (window.location.protocol === 'file:') {
+            console.error('⚠️ WARNING: HTML opened as file://');
+            console.error('CORS will block API requests. Please use a web server:');
+            console.error('  python -m http.server 8000');
+            console.error('Then open: http://localhost:8000/test_ui.html');
+            
+            // Show alert to user
+            setTimeout(() => {
+                alert('⚠️ HTML opened as file://\n\nCORS will block API requests.\n\nPlease use a web server:\n1. Run: python -m http.server 8000\n2. Open: http://localhost:8000/test_ui.html');
+            }, 1000);
+        }
+
         // Test server connection on load
         console.log('Testing server connection to:', API);
-        fetch(`${API}/health`)
+        console.log('Current page protocol:', window.location.protocol);
+        fetch(`${API}/health`, {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache'
+        })
             .then(res => {
                 if (res.ok) {
                     console.log('✅ Server is running');
+                    return res.json();
                 } else {
-                    console.warn('⚠️ Server responded with status:', res.status);
+                    console.warn('⚠️ Server responded with status:', res.status, res.statusText);
+                    return null;
+                }
+            })
+            .then(data => {
+                if (data) {
+                    console.log('Server status:', data);
                 }
             })
             .catch(err => {
                 console.error('❌ Cannot connect to server:', err);
-                console.error('Make sure to run: python run_server.py');
+                console.error('Error details:', err.message);
+                console.error('Possible causes:');
+                console.error('  1. Server not running - run: python run_server.py');
+                console.error('  2. HTML opened as file:// - use a web server instead');
+                console.error('  3. CORS blocked - check server CORS settings');
+                console.error('  4. Firewall blocking connection');
             });
 
         // Tab switching
@@ -569,11 +599,19 @@
         // Health check
         async function checkHealth() {
             try {
-                const res = await fetch(`${API}/health`);
+                const res = await fetch(`${API}/health`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-cache'
+                });
+                
                 if (!res.ok) {
+                    console.warn(`Health check returned ${res.status}: ${res.statusText}`);
                     throw new Error(`HTTP ${res.status}`);
                 }
+                
                 const data = await res.json();
+                console.log('Health check successful:', data);
 
                 const serverDot = document.getElementById('server-dot');
                 const serverText = document.getElementById('server-text');
@@ -730,10 +768,29 @@
             try {
                 console.log('Uploading file:', file.name, 'Size:', file.size);
                 
-                // First check if server is reachable
-                const healthCheck = await fetch(`${API}/health`).catch(() => null);
+                // First check if server is reachable (with better error handling)
+                let healthCheck = null;
+                try {
+                    healthCheck = await fetch(`${API}/health`, { 
+                        method: 'GET',
+                        mode: 'cors',
+                        cache: 'no-cache'
+                    });
+                    console.log('Health check response:', healthCheck.status, healthCheck.statusText);
+                } catch (healthError) {
+                    console.error('Health check failed:', healthError);
+                    // If it's a network error, provide helpful message
+                    if (healthError.message.includes('Failed to fetch') || 
+                        healthError.message.includes('NetworkError') ||
+                        healthError.message.includes('CORS')) {
+                        throw new Error('Cannot connect to server. Possible issues:\n1. Server not running (run: python run_server.py)\n2. HTML opened as file:// (use a web server instead)\n3. CORS blocked (check server CORS settings)\n\nCheck browser console (F12) for details.');
+                    }
+                    throw healthError;
+                }
+                
                 if (!healthCheck || !healthCheck.ok) {
-                    throw new Error('Cannot connect to server. Make sure the backend is running on http://localhost:5000');
+                    const statusText = healthCheck ? `${healthCheck.status} ${healthCheck.statusText}` : 'No response';
+                    throw new Error(`Server responded with error: ${statusText}. Check server logs.`);
                 }
 
                 const res = await fetch(`${API}/upload-pdf`, { 

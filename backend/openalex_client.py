@@ -94,11 +94,13 @@ class OpenAlexClient:
             "User-Agent": f"JournalSense/1.0 (mailto:{self.email})",
             "Accept": "application/json"
         })
-        self._rate_limit_delay = 0.1  # 10 requests per second max
+        self._rate_limit_delay = 0.2  # 5 requests per second (more conservative)
         self._last_request_time = 0
+        self._retry_count = 0
+        self._max_retries = 3
     
-    def _make_request(self, endpoint: str, params: Dict = None) -> Optional[Dict]:
-        """Make a rate-limited request to OpenAlex"""
+    def _make_request(self, endpoint: str, params: Dict = None, retry: int = 0) -> Optional[Dict]:
+        """Make a rate-limited request to OpenAlex with retry logic"""
         # Rate limiting
         elapsed = time.time() - self._last_request_time
         if elapsed < self._rate_limit_delay:
@@ -112,27 +114,74 @@ class OpenAlexClient:
             response = self.session.get(url, params=params, timeout=30)
             self._last_request_time = time.time()
             
+            # Check for rate limiting (429 Too Many Requests)
+            if response.status_code == 429:
+                retry_after = int(response.headers.get('Retry-After', 60))
+                logger.warning(f"OpenAlex rate limit hit. Retry after {retry_after} seconds")
+                
+                if retry < self._max_retries:
+                    logger.info(f"Waiting {retry_after} seconds before retry {retry + 1}/{self._max_retries}")
+                    time.sleep(retry_after)
+                    return self._make_request(endpoint, params, retry + 1)
+                else:
+                    logger.error("Max retries reached for rate limit")
+                    return None
+            
+            # Check for other errors
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                # Log response metadata for debugging
+                meta = data.get('meta', {})
+                count = meta.get('count', 0)
+                results_count = len(data.get('results', []))
+                logger.info(f"OpenAlex request successful: {results_count} results returned, {count} total available")
+                
+                # Log sample result for verification
+                if results_count > 0:
+                    first_result = data['results'][0]
+                    first_title = first_result.get('title', 'Unknown')[:60]
+                    first_id = first_result.get('id', 'Unknown').split('/')[-1] if first_result.get('id') else 'Unknown'
+                    logger.info(f"Sample result: {first_title}... (OpenAlex ID: {first_id})")
+                
+                return data
             else:
-                logger.warning(f"OpenAlex request failed: {response.status_code}")
+                logger.warning(f"OpenAlex request failed: {response.status_code} - {response.text[:200]}")
+                # Log response body for debugging
+                try:
+                    error_data = response.json()
+                    logger.warning(f"Error details: {error_data}")
+                except:
+                    pass
                 return None
+                
+        except requests.exceptions.Timeout:
+            logger.error("OpenAlex request timeout")
+            if retry < self._max_retries:
+                wait_time = (retry + 1) * 5  # Exponential backoff
+                logger.info(f"Retrying after {wait_time} seconds...")
+                time.sleep(wait_time)
+                return self._make_request(endpoint, params, retry + 1)
+            return None
         except requests.RequestException as e:
             logger.error(f"OpenAlex request error: {e}")
             return None
     
     def search_works_by_title(self, title: str) -> Optional[OpenAlexWork]:
         """Search for a work by title to get its OpenAlex ID"""
-        params = {
-            "filter": f"title.search:{title}",
-            "per_page": 1
-        }
-        
-        data = self._make_request("works", params)
-        if data and data.get("results"):
-            work_data = data["results"][0]
-            return self._parse_work(work_data)
-        return None
+        try:
+            params = {
+                "filter": f"title.search:{title}",
+                "per_page": 1
+            }
+            
+            data = self._make_request("works", params)
+            if data and data.get("results") and len(data["results"]) > 0:
+                work_data = data["results"][0]
+                return self._parse_work(work_data)
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to search works by title '{title}': {e}")
+            return None
     
     def search_works_by_concepts(
         self, 
@@ -142,23 +191,100 @@ class OpenAlexClient:
         """
         Query Type 1: Concept Expansion
         Find papers related to given concepts (canonical tokens)
+        
+        Uses multiple search strategies for better results:
+        1. Full text search with all concepts
+        2. Individual concept searches (if first fails)
         """
-        # Build concept filter
-        concept_filter = "|".join(concepts)
+        if not concepts:
+            logger.warning("No concepts provided for search")
+            return []
+        
+        # Strategy 1: Try full text search with all concepts
+        # Use space-separated for better matching (OpenAlex search works best with natural language)
+        search_query = " ".join(concepts[:5])  # Limit to 5 concepts
         params = {
-            "search": concept_filter,
-            "per_page": per_page,
+            "search": search_query,
+            "per_page": min(per_page, 200),  # OpenAlex max is 200
             "sort": "cited_by_count:desc"
         }
         
+        logger.info(f"Searching OpenAlex for: '{search_query}' (limit: {per_page})")
+        logger.info(f"API URL: {self.base_url}/works?search={search_query}&per_page={params['per_page']}")
+        
         data = self._make_request("works", params)
+        
+        # Strategy 2: If no results, try with fewer concepts
+        if data is None or (data.get("results") and len(data.get("results", [])) == 0):
+            if len(concepts) > 1:
+                logger.info(f"No results with all concepts, trying with first 2: {concepts[:2]}")
+                search_query = " ".join(concepts[:2])
+                params = {
+                    "search": search_query,
+                    "per_page": min(per_page, 200),
+                    "sort": "cited_by_count:desc"
+                }
+                data = self._make_request("works", params)
+        
+        # Strategy 3: If still no results, try with just the first concept
+        if data is None or (data and data.get("results") and len(data.get("results", [])) == 0):
+            if len(concepts) > 0:
+                logger.info(f"Trying fallback search with first concept only: '{concepts[0]}'")
+                params = {
+                    "search": concepts[0],
+                    "per_page": min(per_page, 200),
+                    "sort": "cited_by_count:desc"
+                }
+                data = self._make_request("works", params)
+        
         if data is None:
             logger.warning("OpenAlex API unavailable - returning empty results")
-            return []  # Don't raise exception - return empty list instead
+            return []
+        
+        # Check if we got results
+        results = data.get("results", [])
+        meta = data.get("meta", {})
+        count = meta.get("count", 0)
+        page = meta.get("page", 1)
+        per_page = meta.get("per_page", 25)
+        
+        logger.info(f"OpenAlex API response: {len(results)} results returned, {count} total available")
+        logger.info(f"Response metadata: page={page}, per_page={per_page}, count={count}")
+        
+        if results and len(results) > 0:
+            parsed_works = []
+            for i, w in enumerate(results):
+                try:
+                    parsed = self._parse_work(w)
+                    if parsed:  # Only add if parsing succeeded
+                        parsed_works.append(parsed)
+                    else:
+                        logger.warning(f"Failed to parse result {i+1}")
+                except Exception as e:
+                    logger.warning(f"Error parsing result {i+1}: {e}")
+                    continue
             
-        if data and data.get("results"):
-            return [self._parse_work(w) for w in data["results"]]
-        return []
+            logger.info(f"Successfully parsed {len(parsed_works)} papers from {len(results)} results")
+            
+            if len(parsed_works) == 0:
+                logger.error("All results failed to parse! Check _parse_work function")
+                # Log first result structure for debugging
+                if results:
+                    logger.error(f"Sample result structure: {list(results[0].keys())[:10]}")
+            
+            return parsed_works
+        else:
+            logger.warning(f"No results found for query: '{search_query}'")
+            if count > 0:
+                logger.warning(f"API says {count} total matches exist, but 0 results in response")
+                logger.warning("This might be a pagination issue or API bug")
+            else:
+                logger.warning("API returned 0 total matches for this query")
+            logger.warning("Suggestions:")
+            logger.warning("  1. Try broader terms (e.g., 'vision transformer' instead of full title)")
+            logger.warning("  2. Check if rate limited - wait 5-10 minutes")
+            logger.warning("  3. Verify network connection")
+            return []
     
     def get_benchmark_coverage(
         self, 
@@ -220,22 +346,69 @@ class OpenAlexClient:
         years_since_pub = max(1, 2025 - work.publication_year)
         return work.cited_by_count / years_since_pub
     
-    def _parse_work(self, work_data: Dict) -> OpenAlexWork:
+    def _parse_work(self, work_data: Dict) -> Optional[OpenAlexWork]:
         """Parse OpenAlex work data into structured format"""
-        return OpenAlexWork(
-            work_id=work_data.get("id", ""),
-            doi=work_data.get("doi"),
-            title=work_data.get("title", "Unknown"),
-            publication_year=work_data.get("publication_year"),
-            cited_by_count=work_data.get("cited_by_count", 0),
-            concepts=[
-                c.get("display_name", "") 
-                for c in work_data.get("concepts", [])[:10]
-            ],
-            authorships=work_data.get("authorships", []),
-            referenced_works=work_data.get("referenced_works", []),
-            abstract_inverted_index=work_data.get("abstract_inverted_index")
-        )
+        try:
+            if not work_data or not isinstance(work_data, dict):
+                logger.warning("Invalid work_data: not a dict or empty")
+                return None
+            
+            # Extract work_id (can be full URL or just ID)
+            work_id = work_data.get("id", "")
+            if not work_id:
+                logger.warning("Missing work_id in response")
+                return None
+            
+            # Extract title
+            title = work_data.get("title", "Unknown")
+            if not title or title == "Unknown":
+                logger.warning(f"Missing or invalid title for work {work_id[:20]}")
+                # Don't skip - some papers might not have titles
+            
+            # Extract concepts safely
+            concepts = []
+            concepts_raw = work_data.get("concepts", [])
+            if concepts_raw:
+                for c in concepts_raw[:10]:
+                    if isinstance(c, dict):
+                        concept_name = c.get("display_name") or c.get("display_name", "")
+                        if concept_name:
+                            concepts.append(concept_name)
+                    elif isinstance(c, str):
+                        concepts.append(c)
+            
+            # Extract publication year
+            pub_year = work_data.get("publication_year")
+            if pub_year and not isinstance(pub_year, int):
+                try:
+                    pub_year = int(pub_year)
+                except:
+                    pub_year = None
+            
+            # Extract citations
+            citations = work_data.get("cited_by_count", 0)
+            if citations and not isinstance(citations, int):
+                try:
+                    citations = int(citations)
+                except:
+                    citations = 0
+            
+            return OpenAlexWork(
+                work_id=work_id,
+                doi=work_data.get("doi"),
+                title=title,
+                publication_year=pub_year,
+                cited_by_count=citations,
+                concepts=concepts,
+                authorships=work_data.get("authorships", []),
+                referenced_works=work_data.get("referenced_works", []),
+                abstract_inverted_index=work_data.get("abstract_inverted_index")
+            )
+        except Exception as e:
+            logger.warning(f"Failed to parse OpenAlex work data: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
+            return None
     
     def _reconstruct_abstract(self, inverted_index: Dict) -> str:
         """Reconstruct abstract from inverted index"""
@@ -375,8 +548,29 @@ class OpenAlexEnricher:
         """
         Entry Path B: Expand from research topic/seed paper.
         Returns related papers for a given topic.
+        
+        Handles topic as a string and splits it into keywords for better search.
         """
-        return self.client.search_works_by_concepts([topic], per_page=limit)
+        try:
+            # Split topic into keywords (remove common words, keep important terms)
+            topic_clean = topic.strip()
+            
+            # If topic is a single word or short phrase, use it directly
+            if len(topic_clean.split()) <= 3:
+                keywords = [topic_clean]
+            else:
+                # Split into words and filter out common stop words
+                stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can'}
+                words = [w.lower() for w in topic_clean.split() if w.lower() not in stop_words and len(w) > 2]
+                keywords = words[:5]  # Take up to 5 keywords
+            
+            logger.info(f"Expanding from topic: '{topic}' -> keywords: {keywords}")
+            return self.client.search_works_by_concepts(keywords, per_page=limit)
+        except Exception as e:
+            logger.error(f"Failed to expand from topic '{topic}': {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return []  # Return empty list instead of raising
 
 
 def enrich_paper(paper: CanonicalResearchJSON) -> CanonicalResearchJSON:
@@ -400,7 +594,14 @@ def enrich_paper(paper: CanonicalResearchJSON) -> CanonicalResearchJSON:
 
 
 def search_by_topic(topic: str, limit: int = 25) -> List[Dict]:
-    """Search OpenAlex by topic and return paper data"""
-    enricher = OpenAlexEnricher()
-    works = enricher.expand_from_topic(topic, limit)
-    return [w.to_dict() for w in works]
+    """
+    Search OpenAlex by topic and return paper data.
+    Returns empty list if OpenAlex is unavailable (doesn't raise exception).
+    """
+    try:
+        enricher = OpenAlexEnricher()
+        works = enricher.expand_from_topic(topic, limit)
+        return [w.to_dict() for w in works]
+    except Exception as e:
+        logger.error(f"search_by_topic failed for '{topic}': {e}")
+        return []  # Return empty list - don't break corpus building

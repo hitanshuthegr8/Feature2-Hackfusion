@@ -181,12 +181,18 @@ class ChromaPaperStore:
     
     def add_openalex_papers(self, papers: List[Dict]) -> int:
         """Add OpenAlex papers with full provenance"""
+        if not papers:
+            return 0  # Return 0 if no papers provided
+        
         documents = []
         metadatas = []
         ids = []
         embeddings = []
         
         for paper in papers:
+            if not paper or not isinstance(paper, dict):
+                continue
+                
             work_id = paper.get("work_id", "")
             if not work_id:
                 continue
@@ -195,9 +201,11 @@ class ChromaPaperStore:
             
             try:
                 existing = self.collection.get(ids=[doc_id])
-                if existing and existing['ids']:
-                    continue
-            except:
+                if existing and existing.get('ids') and len(existing['ids']) > 0:
+                    continue  # Skip if already exists
+            except Exception as e:
+                # Collection might not exist yet or other error - continue
+                logger.debug(f"Error checking existing paper {doc_id}: {e}")
                 pass
             
             title = paper.get("title", "Unknown")
@@ -209,9 +217,13 @@ class ChromaPaperStore:
             # Extract OpenAlex short ID (e.g., W1234567890)
             openalex_short_id = work_id.split("/")[-1] if work_id else ""
             
+            # Ensure concepts is a list
+            if not isinstance(concepts, list):
+                concepts = []
+            
             # EXTRACT CONCEPTS FROM TITLE (Critical for specific architectures)
             title_concepts = []
-            title_lower = title.lower()
+            title_lower = title.lower() if title else ""
             
             # Check for architecture patterns in title
             for pattern in ARCHITECTURE_PATTERNS:
@@ -227,7 +239,7 @@ class ChromaPaperStore:
             all_concepts = list(set(concepts + title_concepts))
             
             # Filter concepts to only valid architecture/method concepts
-            filtered_concepts = [c for c in all_concepts if self._is_valid_architecture_concept(c)]
+            filtered_concepts = [c for c in all_concepts if c and self._is_valid_architecture_concept(c)]
             
             # If no filtered concepts found, try to use any non-excluded title words
             if not filtered_concepts and title_concepts:
@@ -236,14 +248,31 @@ class ChromaPaperStore:
             # Mark if this is a survey paper
             is_survey = self._is_survey_paper(title)
             
+            # Ensure year is valid
+            try:
+                year_int = int(year) if year and str(year) != "Unknown" else 0
+            except (ValueError, TypeError):
+                year_int = 0
+                year = "Unknown"
+            
+            # Ensure citations is valid
+            try:
+                citations_int = int(citations) if citations else 0
+            except (ValueError, TypeError):
+                citations_int = 0
+            
             doc_text = f"""
             Title: {title}
             Year: {year}
-            Citations: {citations}
+            Citations: {citations_int}
             Concepts: {', '.join(filtered_concepts[:10])}
             """.strip()
             
-            embedding = self.embedder.encode(doc_text).tolist()
+            try:
+                embedding = self.embedder.encode(doc_text).tolist()
+            except Exception as e:
+                logger.warning(f"Failed to encode document for {title}: {e}")
+                continue  # Skip this paper if embedding fails
             
             documents.append(doc_text)
             embeddings.append(embedding)
@@ -253,7 +282,7 @@ class ChromaPaperStore:
                 "openalex_id": openalex_short_id,
                 "title": title,
                 "year": str(year),
-                "citations": citations,
+                "citations": citations_int,
                 # Store filtered concepts for analysis
                 "concepts": ", ".join(filtered_concepts[:10]),
                 "all_concepts": ", ".join(all_concepts[:20]), 
@@ -262,12 +291,16 @@ class ChromaPaperStore:
             })
         
         if documents:
-            self.collection.add(
-                documents=documents,
-                embeddings=embeddings,
-                metadatas=metadatas,
-                ids=ids
-            )
+            try:
+                self.collection.add(
+                    documents=documents,
+                    embeddings=embeddings,
+                    metadatas=metadatas,
+                    ids=ids
+                )
+            except Exception as e:
+                logger.error(f"Failed to add papers to ChromaDB: {e}")
+                return 0  # Return 0 if add fails
         
         return len(documents)
     

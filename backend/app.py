@@ -67,20 +67,27 @@ def allowed_file(filename: str) -> bool:
 
 @app.route('/health', methods=['GET'])
 def health():
-    """Health check endpoint"""
-    index = get_paper_index()
-    rag_engine = get_rag_engine()
-    chroma_store = get_chroma_store()
-    ollama_status = rag_engine.check_ollama_status()
-    chroma_stats = chroma_store.get_stats()
-    
-    return jsonify({
-        "status": "healthy",
-        "indexed_papers": len(index.papers),
-        "total_vectors": index.index.ntotal if index.index else 0,
-        "chroma_papers": chroma_stats.get("total_papers", 0),
-        "ollama_status": ollama_status.get("status", "unknown")
-    })
+    """Health check endpoint - CORS enabled for all origins"""
+    try:
+        index = get_paper_index()
+        rag_engine = get_rag_engine()
+        chroma_store = get_chroma_store()
+        ollama_status = rag_engine.check_ollama_status()
+        chroma_stats = chroma_store.get_stats()
+        
+        return jsonify({
+            "status": "healthy",
+            "indexed_papers": len(index.papers),
+            "total_vectors": index.index.ntotal if index.index else 0,
+            "chroma_papers": chroma_stats.get("total_papers", 0),
+            "ollama_status": ollama_status.get("status", "unknown")
+        })
+    except Exception as e:
+        logger.error(f"Health check error: {e}")
+        return jsonify({
+            "status": "error",
+            "error": str(e)
+        }), 500
 
 @app.route('/upload-pdf', methods=['POST'])
 def upload_pdf():
@@ -266,21 +273,36 @@ def build_corpus():
         logger.info(f"Fetching {limit} papers for topic: {topic}")
         works = search_by_topic(topic, limit)
         
-        # Add to ChromaDB
+        if not works:
+            logger.warning(f"No papers found for topic '{topic}'. This might be due to:")
+            logger.warning("  1. OpenAlex API rate limit hit - wait a few minutes and try again")
+            logger.warning("  2. Topic too specific - try broader terms (e.g., 'vision transformer' instead of full title)")
+            logger.warning("  3. Network issues - check internet connection")
+            logger.warning("  4. OpenAlex API temporarily unavailable")
+            logger.warning("\nTIPS:")
+            logger.warning("  - Use 2-4 key terms (e.g., 'medical image segmentation')")
+            logger.warning("  - Avoid full paper titles")
+            logger.warning("  - Try more general topics first")
+            logger.warning("  - Wait 1-2 minutes if you hit rate limit")
+        
+        # Add to ChromaDB (even if works is empty, this is safe)
         added = chroma_store.add_openalex_papers(works)
         stats = chroma_store.get_stats()
         
-        logger.info(f"Added {added} papers to ChromaDB")
+        logger.info(f"Added {added} papers to ChromaDB (fetched {len(works)} from OpenAlex)")
         
         return jsonify({
             "success": True,
             "topic": topic,
             "papers_fetched": len(works),
             "papers_added": added,
-            "total_in_corpus": stats.get("total_papers", 0)
+            "total_in_corpus": stats.get("total_papers", 0),
+            "warning": "No papers fetched from OpenAlex. Check network connection or try a broader topic." if not works else None
         })
     except Exception as e:
         logger.error(f"Error building corpus: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 @app.route('/rag/analyze', methods=['POST'])
