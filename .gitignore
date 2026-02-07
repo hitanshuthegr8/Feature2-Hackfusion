@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Data files (PDFs, cache, etc.)
+research_server/data/pdfs/
+research_server/data/cache/
+research_server/data/grobid_json/
+*.pdf
+
+# Logs
+*.log
+logs/
+
+# Test output
+debug.log
+test_result.json
+pipeline_result.json
+
+# Build
+dist/
+build/
+*.egg-info/

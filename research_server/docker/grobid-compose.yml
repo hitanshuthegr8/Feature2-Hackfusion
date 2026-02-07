@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  grobid:
+    image: lfoppiano/grobid:0.8.0
+    container_name: grobid_server
+    ports:
+      - "8070:8070"
+    environment:
+      - GROBID_PROPERTY_FILE=/opt/grobid/grobid-home/config/grobid.properties
+    volumes:
+      - grobid-data:/opt/grobid/grobid-home/tmp
+    restart: unless-stopped
+
+volumes:
+  grobid-data:
